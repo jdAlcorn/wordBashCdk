@@ -22,12 +22,12 @@ class ComputeStack(Stack):
         game_path = self.node.try_get_context("game_image_path") or "../game"
         
         # ECS Cluster
-        cluster = ecs.Cluster(self, "ScrabbleCluster", vpc=vpc)
+        cluster = ecs.Cluster(self, "WordBashCluster", vpc=vpc)
         
         # Application Load Balancer
         alb_sg = self._create_alb_security_group(vpc)
         alb = elbv2.ApplicationLoadBalancer(
-            self, "ScrabbleALB",
+            self, "WordBashALB",
             vpc=vpc,
             internet_facing=True,
             security_group=alb_sg
@@ -43,9 +43,17 @@ class ComputeStack(Stack):
             )
         )
         
-        # Build Docker images
-        web_image = ecr_assets.DockerImageAsset(self, "WebImage", directory=web_path)
-        game_image = ecr_assets.DockerImageAsset(self, "GameImage", directory=game_path)
+        # Build Docker images for linux/amd64 platform
+        web_image = ecr_assets.DockerImageAsset(
+            self, "WebImage", 
+            directory=web_path,
+            platform=ecr_assets.Platform.LINUX_AMD64
+        )
+        game_image = ecr_assets.DockerImageAsset(
+            self, "GameImage", 
+            directory=game_path,
+            platform=ecr_assets.Platform.LINUX_AMD64
+        )
         
         # Create services
         service_sg = self._create_service_security_group(vpc, alb_sg)
@@ -73,13 +81,13 @@ class ComputeStack(Stack):
         
         # Store WebSocket endpoint in SSM
         ws_endpoint = f"ws://{alb.load_balancer_dns_name}/ws"
-        ws_param_path = "/scrabble/ws_endpoint"
+        ws_param_path = "/wordbash/ws_endpoint"
         
         ssm.StringParameter(
             self, "WsEndpointParam",
             parameter_name=ws_param_path,
             string_value=ws_endpoint,
-            description="WebSocket endpoint URL for Scrabble game connections"
+            description="WebSocket endpoint URL for WordBash game connections"
         )
         
         # Grant SSM access to web service
@@ -99,8 +107,8 @@ class ComputeStack(Stack):
     
     def _create_alb_security_group(self, vpc: ec2.Vpc) -> ec2.SecurityGroup:
         sg = ec2.SecurityGroup(self, "AlbSecurityGroup", vpc=vpc)
-        sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(80))
-        sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(443))
+        # Only allow access from your IP
+        sg.add_ingress_rule(ec2.Peer.ipv4("73.123.150.164/32"), ec2.Port.tcp(80))
         return sg
     
     def _create_service_security_group(self, vpc: ec2.Vpc, alb_sg: ec2.SecurityGroup) -> ec2.SecurityGroup:
@@ -135,13 +143,14 @@ class ComputeStack(Stack):
                 "AWS_REGION": self.region,
                 "LOG_LEVEL": "INFO",
                 "DDB_TABLE_NAME": table.table_name,
-                "WS_ENDPOINT_PARAM": "/scrabble/ws_endpoint",
+                "WS_ENDPOINT_PARAM": "/wordbash/ws_endpoint",
                 "API_BASE_URL": self.node.try_get_context("api_base_url") or ""
             },
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix="web",
                 log_group=logs.LogGroup(
                     self, "WebLogGroup",
+                    log_group_name="/aws/ecs/wordbash-web",
                     retention=logs.RetentionDays.TWO_WEEKS
                 )
             )
@@ -197,6 +206,7 @@ class ComputeStack(Stack):
                 stream_prefix="game",
                 log_group=logs.LogGroup(
                     self, "GameLogGroup",
+                    log_group_name="/aws/ecs/wordbash-game",
                     retention=logs.RetentionDays.TWO_WEEKS
                 )
             )

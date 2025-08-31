@@ -5,10 +5,10 @@ class DataStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
-        # DynamoDB table for Scrabble games
+        # DynamoDB table for WordBash games
         self.table = dynamodb.Table(
-            self, "ScrabbleGamesTable",
-            table_name="scrabble_games",
+            self, "WordBashGamesTable",
+            table_name="wordbash_games",
             partition_key=dynamodb.Attribute(
                 name="game_id",
                 type=dynamodb.AttributeType.STRING

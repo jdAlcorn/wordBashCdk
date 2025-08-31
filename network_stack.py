@@ -7,7 +7,7 @@ class NetworkStack(Stack):
         
         # VPC with 2 AZs, public and private subnets
         self.vpc = ec2.Vpc(
-            self, "ScrabbleVpc",
+            self, "WordBashVpc",
             max_azs=2,
             nat_gateways=1,  # Cost optimization: single NAT for dev-friendly setup
             subnet_configuration=[

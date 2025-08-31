@@ -13,10 +13,10 @@ env = cdk.Environment(
 )
 
 # Deploy stacks in dependency order
-network_stack = NetworkStack(app, "ScrabbleNetworkStack", env=env)
-data_stack = DataStack(app, "ScrabbleDataStack", env=env)
+network_stack = NetworkStack(app, "WordBashNetworkStack", env=env)
+data_stack = DataStack(app, "WordBashDataStack", env=env)
 compute_stack = ComputeStack(
-    app, "ScrabbleComputeStack",
+    app, "WordBashComputeStack",
     vpc=network_stack.vpc,
     table=data_stack.table,
     env=env

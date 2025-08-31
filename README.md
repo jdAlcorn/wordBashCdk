@@ -1,13 +1,13 @@
-# Scrabble Multiplayer CDK Infrastructure
+# WordBash Multiplayer CDK Infrastructure
 
-AWS CDK v2 Python app that deploys infrastructure for a multiplayer Scrabble game with ECS Fargate services and DynamoDB.
+AWS CDK v2 Python app that deploys infrastructure for a multiplayer WordBash game with ECS Fargate services and DynamoDB.
 
 ## Architecture
 
 - **NetworkStack**: VPC with public/private subnets across 2 AZs, NAT gateway
-- **DataStack**: DynamoDB table `scrabble_games` with on-demand billing
-- **ComputeStack**: ECS Fargate cluster, ALB with HTTPS/WebSocket support, two services:
-  - Web Service: Flask REST API and site (`/api/*`, `/`)
+- **DataStack**: DynamoDB table `wordbash_games` with on-demand billing
+- **ComputeStack**: ECS Fargate cluster, ALB with HTTP/WebSocket support, two services:
+  - Web Service: React SPA and API (`/api/*`, `/`)
   - Game Service: WebSocket server (`/ws/*`)
 
 ## Prerequisites
@@ -45,7 +45,7 @@ Edit `cdk.json` context to customize:
 cdk deploy --all
 
 # Deploy specific stack
-cdk deploy ScrabbleComputeStack
+cdk deploy WordBashComputeStack
 ```
 
 ## Expected Outputs
@@ -82,14 +82,14 @@ The ALB automatically handles WebSocket upgrade for `/ws/*` paths. Target group 
 
 ```bash
 # Redeploy to update container images
-cdk deploy ScrabbleComputeStack
+cdk deploy WordBashComputeStack
 ```
 
 ## Viewing Logs
 
 CloudWatch log groups (14-day retention):
-- `/aws/ecs/scrabble-web`
-- `/aws/ecs/scrabble-game`
+- `/aws/ecs/wordbash-web`
+- `/aws/ecs/wordbash-game`
 
 ## TODO
 
