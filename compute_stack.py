@@ -66,7 +66,7 @@ class ComputeStack(Stack):
         http_listener.add_action(
             "WebSocketRule",
             priority=100,
-            conditions=[elbv2.ListenerCondition.path_patterns(["/ws/*"])],
+            conditions=[elbv2.ListenerCondition.path_patterns(["/ws*"])],
             action=elbv2.ListenerAction.forward([game_tg])
         )
         
@@ -98,8 +98,8 @@ class ComputeStack(Stack):
     
     def _create_alb_security_group(self, vpc: ec2.Vpc) -> ec2.SecurityGroup:
         sg = ec2.SecurityGroup(self, "AlbSecurityGroup", vpc=vpc)
-        # Allow access from anywhere for debugging
-        sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(80))
+        # Only allow access from your IP
+        sg.add_ingress_rule(ec2.Peer.ipv4("73.123.150.164/32"), ec2.Port.tcp(80))
         return sg
     
     def _create_service_security_group(self, vpc: ec2.Vpc, alb_sg: ec2.SecurityGroup) -> ec2.SecurityGroup:
