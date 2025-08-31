@@ -23,7 +23,7 @@ class ComputeStack(Stack):
         
         # ECS Cluster
         cluster = ecs.Cluster(self, "WordBashCluster", vpc=vpc)
-        
+
         # Application Load Balancer
         alb_sg = self._create_alb_security_group(vpc)
         alb = elbv2.ApplicationLoadBalancer(
@@ -32,17 +32,7 @@ class ComputeStack(Stack):
             internet_facing=True,
             security_group=alb_sg
         )
-        
-        # HTTP listener with default 404 response
-        http_listener = alb.add_listener(
-            "HttpListener",
-            port=80,
-            protocol=elbv2.ApplicationProtocol.HTTP,
-            default_action=elbv2.ListenerAction.fixed_response(
-                404, content_type="text/plain", message_body="Not Found"
-            )
-        )
-        
+
         # Build Docker images for linux/amd64 platform
         web_image = ecr_assets.DockerImageAsset(
             self, "WebImage", 
@@ -63,20 +53,21 @@ class ComputeStack(Stack):
         # Target groups and listener rules
         web_tg = self._create_web_target_group(vpc, web_service)
         game_tg = self._create_game_target_group(vpc, game_service)
+
+        # HTTP listener with web service as default (catches everything)
+        http_listener = alb.add_listener(
+            "HttpListener",
+            port=80,
+            protocol=elbv2.ApplicationProtocol.HTTP,
+            default_action=elbv2.ListenerAction.forward([web_tg])
+        )
         
-        # Listener rules: WebSocket first (more specific), then API/web
+        # WebSocket rule (higher priority overrides default)
         http_listener.add_action(
             "WebSocketRule",
             priority=100,
             conditions=[elbv2.ListenerCondition.path_patterns(["/ws/*"])],
             action=elbv2.ListenerAction.forward([game_tg])
-        )
-        
-        http_listener.add_action(
-            "WebApiRule", 
-            priority=200,
-            conditions=[elbv2.ListenerCondition.path_patterns(["/api/*", "/"])],
-            action=elbv2.ListenerAction.forward([web_tg])
         )
         
         # Store WebSocket endpoint in SSM
@@ -107,8 +98,8 @@ class ComputeStack(Stack):
     
     def _create_alb_security_group(self, vpc: ec2.Vpc) -> ec2.SecurityGroup:
         sg = ec2.SecurityGroup(self, "AlbSecurityGroup", vpc=vpc)
-        # Only allow access from your IP
-        sg.add_ingress_rule(ec2.Peer.ipv4("73.123.150.164/32"), ec2.Port.tcp(80))
+        # Allow access from anywhere for debugging
+        sg.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(80))
         return sg
     
     def _create_service_security_group(self, vpc: ec2.Vpc, alb_sg: ec2.SecurityGroup) -> ec2.SecurityGroup:
